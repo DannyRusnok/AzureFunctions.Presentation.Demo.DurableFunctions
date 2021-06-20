@@ -1,12 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Net.Http;
-using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs;
+﻿using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
+using System;
+using System.IO;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace AzureFunctions.Presentation.Demo.DurableFunctions
 {
@@ -57,6 +57,8 @@ namespace AzureFunctions.Presentation.Demo.DurableFunctions
             [Blob("licenses/{rand-guid}.lic")] TextWriter outputBlob, //Example of input binding
             ILogger log)
         {
+            //Thread.Sleep(3000);
+
             outputBlob.WriteLine($"OrderId: {order.OrderId}");
             outputBlob.WriteLine($"Email: {order.Email}");
             outputBlob.WriteLine($"ProductId: {order.ProductId}");
@@ -78,6 +80,8 @@ namespace AzureFunctions.Presentation.Demo.DurableFunctions
             [ActivityTrigger] Payment payment,
             ILogger log)
         {
+            //Thread.Sleep(3000);
+
             log.LogInformation("************** NOTIFYING USER *******************\n");
             var notification = new MyNotification
             {
