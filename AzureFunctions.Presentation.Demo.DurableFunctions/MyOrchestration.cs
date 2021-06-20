@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -16,15 +17,21 @@ namespace AzureFunctions.Presentation.Demo.DurableFunctions
         public static async Task RunOrchestrator(
             [OrchestrationTrigger] IDurableOrchestrationContext context)
         {
-            var payment = new Payment { Email = "daniel.rusnok@itixo.com", ProductId = 456 };
+            var payment = new Payment
+            {
+                Email = "daniel.rusnok@itixo.com", ProductId = 456
+            };
+            var order = await context.CallActivityAsync<Order>("MyOrchestration_GenerateOrder", payment);
 
-            var order = await context.CallActivityAsync<Order>("MyOrchestration_ReceivedPayment", payment);
+            var notifyTask = context.CallActivityAsync("MyOrchestration_NotifyAboutAcceptedPayment", payment);
+            var generateLicenceTask = context.CallActivityAsync("MyOrchestration_GenerateLicenceFile", order);
 
-            await context.CallActivityAsync("MyOrchestration_GenerateLicenceFile", order);
+            await Task.WhenAll(notifyTask, generateLicenceTask);
         }
 
-        [FunctionName("MyOrchestration_ReceivedPayment")]
-        public static Order ReceivedPayment([ActivityTrigger] Payment payment, ILogger log)
+        //This is orchestration activity function
+        [FunctionName("MyOrchestration_GenerateOrder")]
+        public static Order GenerateOrder([ActivityTrigger] Payment payment, ILogger log)
         {
             log.LogInformation("*************** RECEIVED PAYMENT ******************");
             log.LogInformation($"ProductId: {payment.ProductId}");
@@ -43,6 +50,7 @@ namespace AzureFunctions.Presentation.Demo.DurableFunctions
             return order;
         }
 
+        //This is orchestration activity function
         [FunctionName("MyOrchestration_GenerateLicenceFile")]
         public static void GenerateLicenceFile(
             [ActivityTrigger] Order order,
@@ -63,6 +71,23 @@ namespace AzureFunctions.Presentation.Demo.DurableFunctions
             log.LogInformation($"LicenceCode: {Guid.NewGuid()}");
         }
 
+        //This is orchestration activity function
+        [FunctionName("MyOrchestration_NotifyAboutAcceptedPayment")]
+        [return: Queue("notifications")] // Example of output binding
+        public static MyNotification NotifyAboutAcceptedPayment(
+            [ActivityTrigger] Payment payment,
+            ILogger log)
+        {
+            log.LogInformation("************** NOTIFYING USER *******************\n");
+            var notification = new MyNotification
+            {
+                Email = payment.Email,
+                Message = $"Your payment for product {payment.ProductId} was accepted!"
+            };
+
+            return notification;
+        }
+
         //This is orchestration start function
         [FunctionName("MyOrchestration_HttpStart")]
         public static async Task<HttpResponseMessage> HttpStart(
@@ -77,5 +102,11 @@ namespace AzureFunctions.Presentation.Demo.DurableFunctions
 
             return starter.CreateCheckStatusResponse(req, instanceId);
         }
+    }
+
+    public class MyNotification
+    {
+        public string Email { get; set; }
+        public string Message { get; set; }
     }
 }
