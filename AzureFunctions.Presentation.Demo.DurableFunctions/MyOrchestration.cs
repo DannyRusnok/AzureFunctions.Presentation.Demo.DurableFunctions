@@ -23,10 +23,10 @@ namespace AzureFunctions.Presentation.Demo.DurableFunctions
             };
             var order = await context.CallActivityAsync<Order>("MyOrchestration_GenerateOrder", payment);
 
-            //var notifyTask = context.CallActivityAsync("MyOrchestration_NotifyAboutAcceptedPayment", payment);
+            var notifyTask = context.CallActivityAsync("MyOrchestration_NotifyAboutAcceptedPayment", payment);
             var generateLicenceTask = context.CallActivityAsync("MyOrchestration_GenerateLicenceFile", order);
 
-            await Task.WhenAll(/*notifyTask, */generateLicenceTask);
+            await Task.WhenAll(notifyTask, generateLicenceTask);
         }
 
         //This is orchestration activity function
@@ -72,21 +72,21 @@ namespace AzureFunctions.Presentation.Demo.DurableFunctions
         }
 
         //This is orchestration activity function
-        //[FunctionName("MyOrchestration_NotifyAboutAcceptedPayment")]
-        //[return: Queue("notifications", Connection = "AzureWebJobsStorage")] // Example of output binding
-        //public static MyNotification NotifyAboutAcceptedPayment(
-        //    [ActivityTrigger] Payment payment,
-        //    ILogger log)
-        //{
-        //    log.LogInformation("************** NOTIFYING USER *******************\n");
-        //    var notification = new MyNotification
-        //    {
-        //        Email = payment.Email,
-        //        Message = $"Your payment for product {payment.ProductId} was accepted!"
-        //    };
+        [FunctionName("MyOrchestration_NotifyAboutAcceptedPayment")]
+        [return: Queue("notifications", Connection = "AzureWebJobsStorage")] // Example of output binding
+        public static MyNotification NotifyAboutAcceptedPayment(
+            [ActivityTrigger] Payment payment,
+            ILogger log)
+        {
+            log.LogInformation("************** NOTIFYING USER *******************\n");
+            var notification = new MyNotification
+            {
+                Email = payment.Email,
+                Message = $"Your payment for product {payment.ProductId} was accepted!"
+            };
 
-        //    return notification;
-        //}
+            return notification;
+        }
 
         //This is orchestration start function
         [FunctionName("MyOrchestration_HttpStart")]
